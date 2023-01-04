@@ -3,16 +3,25 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.openqa.selenium.*;
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import utilities.Wait;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.time.Duration;
-public class StaleElementExceptionsTests {
+import java.util.HashMap;
+
+public class StaleElementExceptionsLambdaTestTests {
     private final int WAIT_FOR_ELEMENT_TIMEOUT = 30;
-    private ChromeDriver driver;
+    private WebDriver driver;
     private WebDriverWait webDriverWait;
 
     @BeforeAll
@@ -21,8 +30,25 @@ public class StaleElementExceptionsTests {
     }
 
     @BeforeEach
-    public void setUp() {
-        driver = new ChromeDriver();
+    public void setUp() throws MalformedURLException {
+        String username = System.getenv("LT_USERNAME");
+        String authkey = System.getenv("LT_ACCESSKEY");
+        String hub = "@hub.lambdatest.com/wd/hub";
+
+        DesiredCapabilities capabilities = new DesiredCapabilities();
+        capabilities.setCapability("browserName", "Chrome");
+        capabilities.setCapability("browserVersion", "latest");
+        HashMap<String, Object> ltOptions = new HashMap<String, Object>();
+        ltOptions.put("user", username);
+        ltOptions.put("accessKey", authkey);
+        ltOptions.put("build", "Selenium 4");
+        ltOptions.put("name",this.getClass().getName());
+        ltOptions.put("platformName", "Windows 10");
+        ltOptions.put("seCdp", true);
+        ltOptions.put("selenium_version", "4.0.0");
+        capabilities.setCapability("LT:Options", ltOptions);
+
+        driver = new RemoteWebDriver(new URL("https://" + username + ":" + authkey + hub), capabilities);
         driver.manage().window().maximize();
         webDriverWait = new WebDriverWait(driver, Duration.ofSeconds(WAIT_FOR_ELEMENT_TIMEOUT));
     }
@@ -62,7 +88,7 @@ public class StaleElementExceptionsTests {
     }
 
     @Test
-    public void test2_WhileLoopToHandle() {
+    public void test2_WhileLoopToHandle_SERE() {
         driver.navigate().to("https://www.lambdatest.com/selenium-playground/");
 
         WebElement pageLink = driver.findElement(By.linkText("Table Data Search"));
@@ -71,7 +97,6 @@ public class StaleElementExceptionsTests {
 
         Wait wait = new Wait(driver);
         var input = wait.retryWhileLoop(filterByField);
-        //var input = wait.retryWhileLoop(filterByField, 3, TimeoutException.class, ElementClickInterceptedException.class);
         input.sendKeys("in progress");
 
         driver.navigate().back();
@@ -83,7 +108,7 @@ public class StaleElementExceptionsTests {
     }
 
     @Test
-    public void test3_ForLoopToHandle() {
+    public void test3_ForLoopToHandle_SERE() {
         driver.navigate().to("https://www.lambdatest.com/selenium-playground/");
 
         WebElement pageLink = driver.findElement(By.linkText("Table Data Search"));
@@ -91,8 +116,7 @@ public class StaleElementExceptionsTests {
         By filterByField = By.id("task-table-filter");
 
         Wait wait = new Wait(driver);
-        var input = wait.retryForLoop(filterByField, 3);
-
+        var input = wait.retryWhileLoop(filterByField);
         input.sendKeys("in progress");
 
         driver.navigate().back();

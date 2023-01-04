@@ -39,6 +39,21 @@ public class Wait {
         return retryWhileLoop(locator, 5);
     }
 
+    public boolean retryUsingForLoop_TryCatch(By locator, String value) {
+        boolean outcome = false;
+        for(int repeat=0; repeat<=3; repeat++) {
+            try {
+                driver.findElement(locator).sendKeys(value);
+                outcome = true;
+                break;
+            } catch(StaleElementReferenceException exc) {
+                exc.printStackTrace();
+            }
+        }
+        return outcome;
+    }
+
+
     public WebElement retryWhileLoop(By locator, int timesToRetry) {
         WebElement foundElement = null;
         int repeat = 0;
@@ -62,8 +77,10 @@ public class Wait {
     public WebElement retryWhileLoop(By locator, int timesToRetry, Class<? extends Throwable> ... exceptionsToIgnore) {
         WebElement foundElement = null;
         int repeat = 0;
+        boolean shouldThrowException = true;
         while(repeat <= timesToRetry) {
             try {
+                shouldThrowException = true;
                 foundElement = driver.findElement(locator);
                 break;
             } catch(Exception exc) {
@@ -71,11 +88,14 @@ public class Wait {
                     if (currentException.isInstance(exc)) {
                         exc.printStackTrace();
                         repeat++;
-                        continue;
+                        shouldThrowException = false;
+                        break;
                     }
                 }
 
-                throw exc;
+                if (shouldThrowException) {
+                    throw exc;
+                }
             }
         }
 
@@ -88,8 +108,10 @@ public class Wait {
 
     public void retry(Supplier action, int timesToRetry, Class<? extends Throwable> ... exceptionsToIgnore) {
         int repeat = 0;
+        boolean shouldThrowException = true;
         while(repeat <= timesToRetry) {
             try {
+                shouldThrowException = true;
                 action.get();
                 break;
             } catch(Exception exc) {
@@ -97,27 +119,43 @@ public class Wait {
                     if (currentException.isInstance(exc)) {
                         exc.printStackTrace();
                         repeat++;
-                        continue;
+                        shouldThrowException = false;
+                        break;
                     }
                 }
 
-                throw exc;
+                if (shouldThrowException) {
+                    throw exc;
+                }
             }
         }
     }
 
-    public boolean retryUsingForLoop_TryCatch(By locator, String value) {
-        boolean outcome = false;
-        for(int repeat=0; repeat<=3; repeat++) {
+    public void retry(Supplier action, Duration timeout, Duration sleepInterval, Class<? extends Throwable> ... exceptionsToIgnore) throws InterruptedException {
+        boolean shouldThrowException = true;
+        long start = System.currentTimeMillis();
+        long end = start + timeout.toMillis();
+        while(System.currentTimeMillis() < end) {
             try {
-                driver.findElement(locator).sendKeys(value);
-                outcome = true;
+                shouldThrowException = true;
+                action.get();
                 break;
-            } catch(StaleElementReferenceException exc) {
-                exc.printStackTrace();
+            } catch(Exception exc) {
+                for (var currentException : exceptionsToIgnore) {
+                    if (currentException.isInstance(exc)) {
+                        exc.printStackTrace();
+                        shouldThrowException = false;
+                        break;
+                    }
+                }
+
+                if (shouldThrowException) {
+                    throw exc;
+                }
             }
+
+            Thread.sleep(sleepInterval.toMillis());
         }
-        return outcome;
     }
 
     public WebElement getElement(By locator) {
